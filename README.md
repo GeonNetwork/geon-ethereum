@@ -1,2 +1,2 @@
 # geon-ethereum
-Geon implementation on the Ethereum blockchain
+Geon implementation for the Ethereum blockchain.
