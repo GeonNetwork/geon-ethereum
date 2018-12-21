@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.1;
 
 import "openzeppelin-solidity/contracts/token/ERC20/BasicToken.sol";
 
@@ -22,15 +22,8 @@ contract Geon {
         token = BasicToken(_token);
     }
     
-    function () payable public {
-        TopUp();
-    }
-
-    /**
-    * @dev Top up ETH (used to pay tx fees).
-    */
-    function TopUp() payable public {
-        emit TopUpEvent(msg.sender, msg.value);
+    function () payable external {
+        revert("This contract does not accept funds directly.");
     }
 
     /**
@@ -61,7 +54,7 @@ contract Geon {
         
         uint256 gasSpent = 21000 + (remainingGasAtStart - gasleft());
 
-        // This is an approximate tx cost. We'll refine this and use it to return the cost to the caller (i.e. the Geon Network service).
+        // TODO: This is an approximate tx cost. Refine this and use it to return the cost to the caller (i.e. the Geon Network service).
         emit RewardUserTxCost(gasSpent, tx.gasprice, gasSpent * tx.gasprice);
         
         return retVal;
