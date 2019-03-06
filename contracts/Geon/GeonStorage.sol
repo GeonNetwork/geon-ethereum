@@ -174,11 +174,11 @@ contract GeonStorage is WhitelistedRole, Pausable {
         return boolStorage[_key];
     }
 
-    function _setBool(bytes32 _key, bool _value) internal onlyWhitelisted whenNotPaused {
+    function _setBool(bytes32 _key, bool _value) internal {
         boolStorage[_key] = _value;
     }
 
-    // function _deleteBool(bytes32 _key) external onlyWhitelisted whenNotPaused {
+    // function _deleteBool(bytes32 _key) external {
     //     delete boolStorage[_key];
     // }
 }

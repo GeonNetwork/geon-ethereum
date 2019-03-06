@@ -70,7 +70,7 @@ contract GeonAggregator is Ownable, Pausable, IGeonTopup {
      * Creates a Geon.
      * @param _geonId A Geon identifier defined and used by the Dapp to refer to this Geon.
      */
-    function createGeon(bytes16 _geonId) external {
+    function createGeon(bytes16 _geonId) external whenNotPaused {
         _createGeon(_geonId);
     }
 
@@ -79,7 +79,7 @@ contract GeonAggregator is Ownable, Pausable, IGeonTopup {
      * @dev The number of Geons that can be created is limited by the block gas limit.
      * @param _geonIds An array of Geon IDs of Geons to be created.
      */
-    function createGeons(bytes16[] calldata _geonIds) external {
+    function createGeons(bytes16[] calldata _geonIds) external whenNotPaused {
         for (uint256 i = 0; i < _geonIds.length; i++) {
             // TODO: If this reverts, ideally we should return a meaningful error message saying which _geonId (or index) failed.
             _createGeon(_geonIds[i]);
@@ -99,7 +99,7 @@ contract GeonAggregator is Ownable, Pausable, IGeonTopup {
      * Called by the reward token contract to notify us about the received tokens.
      * @dev The tokens must be transferred or allowed to this contract.
      */
-    function increaseGeonBalance(bytes16 _geonId, uint256 _amount) external {
+    function increaseGeonBalance(bytes16 _geonId, uint256 _amount) external whenNotPaused {
         require(msg.sender == address(rewardToken), "Can only be called by the reward token contract.");
 
         uint256 oldBalance = _getRewardTokenOwned(_geonId);
@@ -113,7 +113,7 @@ contract GeonAggregator is Ownable, Pausable, IGeonTopup {
      * Deletes the Geon and transfers all the remaining reward tokens owned by the Geon to the caller.
      * @dev Can only be called by the Geon creator.
      */
-    function deleteGeon(bytes16 _geonId) external {
+    function deleteGeon(bytes16 _geonId) external whenNotPaused {
         require(msg.sender == _getGeonCreator(_geonId), "Can only be called by the Geon creator.");
 
         uint256 outstandingRewardBalance = _getRewardTokenOwned(_geonId);
@@ -143,7 +143,7 @@ contract GeonAggregator is Ownable, Pausable, IGeonTopup {
      * @dev Can only be called by the Dapp.
      * @param _geominingReqId Identifies a specific geomining request. It is set by the Dapp. The geominer should supsequently call geomine() to claim the reward for this _geominingReqId.
      */
-    function setGeominingReward(bytes16 _geonId, address _miner, bytes16 _geominingReqId, uint256 _rewardTokenAmount) external onlyOwner {
+    function setGeominingReward(bytes16 _geonId, address _miner, bytes16 _geominingReqId, uint256 _rewardTokenAmount) external onlyOwner whenNotPaused {
         require(_geonExists(_geonId), "Geon with this ID does not exist.");
 
         _storeGeominingReward(_geonId, _miner, _geominingReqId, _rewardTokenAmount);
@@ -152,7 +152,7 @@ contract GeonAggregator is Ownable, Pausable, IGeonTopup {
     /**
      * Called by a geominer to claim the reward.
      */
-    function geomine(bytes16 _geonId, bytes16 _geominingReqId) external {
+    function geomine(bytes16 _geonId, bytes16 _geominingReqId) external whenNotPaused {
         address miner = msg.sender;
         uint256 rewardAmount = _getGeominingReward(_geonId, miner, _geominingReqId);
 
