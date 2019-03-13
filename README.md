@@ -1,5 +1,5 @@
 # geon-ethereum
-Geon implementation for the Ethereum blockchain.
+Geon Network implementation for an Ethereum blockchain.
 
 # Getting Started
 Pre-requisites: install [NodeJS](https://nodejs.org), [npm](https://www.npmjs.com) (will be installed automaticaly along with NodeJS) and [Truffle](https://truffleframework.com).
@@ -9,4 +9,4 @@ Pre-requisites: install [NodeJS](https://nodejs.org), [npm](https://www.npmjs.co
 - `npm install`
 - `truffle compile`
 
-NOTE: The required solc version in OpenZeppelin contracts needs to be manually changed to 0.5.1 to complie. This is temporary.
+NOTE: You may need to manually udpate solc version in Truffle to something higher than 0.5.1 to complie. This is temporary.
