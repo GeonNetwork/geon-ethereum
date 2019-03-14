@@ -1,5 +1,5 @@
 const assertReverts = require("./testUtils.js").assertReverts;
-const BigNumber = require("BigNumber.js"); // TODO: Drop this and use web3.BigNumber.
+const BN = web3.utils.BN;
 
 const GeonCoin = artifacts.require("GeonCoin");
 const GeonAgg = artifacts.require("GeonAggregator");
@@ -8,24 +8,28 @@ const GeonSto = artifacts.require("GeonStorage");
 const DEFAULT_VALUE_BYTES20 = "0x0000000000000000000000000000000000000000";
 const DEFAULT_VALUE_ADDRESS = DEFAULT_VALUE_BYTES20;
 
+function assertBNEqual(a, b, errorMsg) {
+    assert.strictEqual(new BN(a).cmp(new BN(b)), 0, errorMsg);
+}
+
 /*
 * @dev It is recommended to pass in expectedRewardTokenOwned as a string to avoid precission loss issues when using Number as descriped here: https://github.com/MikeMcl/bignumber.js/
 */
 function verifyGeon({expectedGeonId, expectedCreator, expectedRewardTokenOwned, actualGeon}) {
     let expected = expectedGeonId;
     let actual = actualGeon.id;
-    let errorMsg = "Geon ID: expected " + expected + " actual " + actual;
-    assert.strictEqual(expected, actual, errorMsg);
+    let errorMsg = "Geon ID: actual " + actual + " expected " + expected;
+    assert.strictEqual(actual, expected, errorMsg);
 
     expected = expectedCreator;
     actual = actualGeon.creator;
-    errorMsg = "Geon creator: expected " + expected + " actual " + actual;
-    assert.strictEqual(expected, actual, errorMsg);
+    errorMsg = "Geon creator: actual " + actual + " expected " + expected;
+    assert.strictEqual(actual, expected, errorMsg);
 
     expected = expectedRewardTokenOwned;
     actual = actualGeon.rewardTokenOwned;
-    errorMsg = "Reward token owned: expected " + expected + " actual " + actual;
-    assert(BigNumber(expected).isEqualTo(BigNumber(actual)), errorMsg);
+    errorMsg = "Reward token owned: actual " + actual + " expected " + expected;
+    assertBNEqual(actual, expected, errorMsg);
 }
 
 function byteArrayToHexString(arr) {
@@ -157,19 +161,24 @@ contract("GeonAgg & GeonCoin", accounts => {
         const creator0 = accounts[0];
         const creator1 = accounts[1];
 
-        assert(BigNumber("0").isEqualTo(await geonAgg.geonCount()), "Geon count should be 0 initially.")
+        let actualCount = await geonAgg.geonCount();
+        assertBNEqual(actualCount, "0", `Geon count is ${actualCount}, but should be 0 initially.`);
 
         await geonAgg.createGeon(geonId0, { from: creator0 });
-        assert(BigNumber("1").isEqualTo(await geonAgg.geonCount()), "Geon count should be 1 after 1 Geon is added")
+        actualCount = await geonAgg.geonCount();
+        assertBNEqual(actualCount, "1", `Geon count is ${actualCount}, but should be 1 after 1 Geon is added`);
 
         await geonAgg.createGeon(geonId1, { from: creator1 });
-        assert(BigNumber("2").isEqualTo(await geonAgg.geonCount()), "Geon count should be 2 after 2 Geons are added")
+        actualCount = await geonAgg.geonCount();
+        assertBNEqual(actualCount, "2", `Geon count is ${actualCount}, but should be 2 after 2 Geons are added`);
 
         await geonAgg.deleteGeon(geonId0, { from: creator0 });
-        assert(BigNumber("1").isEqualTo(await geonAgg.geonCount()), "Geon count should be 1 after 1 Geon is deleted")
+        actualCount = await geonAgg.geonCount();
+        assertBNEqual(actualCount, "1", `Geon count is ${actualCount}, but should be 1 after 1 Geon is deleted`);
 
         await geonAgg.deleteGeon(geonId1, { from: creator1 });
-        assert(BigNumber("0").isEqualTo(await geonAgg.geonCount()), "Geon count should be 0 after 2 Geons are deleted")
+        actualCount = await geonAgg.geonCount();
+        assertBNEqual(actualCount, "0", `Geon count is ${actualCount}, but should be 0 after 2 Geons are deleted`);
     });
 
     it("[GeonAgg, GeonCoin] only the reward token contract can call GeonAgg.increaseGeonBalance()", async () => {
@@ -266,18 +275,18 @@ contract("GeonAgg & GeonCoin", accounts => {
         });
 
         // Verify creator GeonCoin balance.
-        assert(BigNumber("0").isEqualTo(await geonCoin.balanceOf(creator)), "Creator GeonCoin balance");
+        assertBNEqual(await geonCoin.balanceOf(creator), "0", "Creator GeonCoin balance");
 
         // Verify GeonAgg GeonCoin balance.
-        assert(BigNumber(amount).isEqualTo(await geonCoin.balanceOf(geonAgg.address)), "GeonAgg GeonCoin balance");
+        assertBNEqual(await geonCoin.balanceOf(geonAgg.address), amount, "GeonAgg GeonCoin balance");
     });
 
     it("[GeonCoin] any user can top up a Geon", async () => {
         const geonId = "0x112233445566778899aabbccddeeff00";
         const creator = accounts[1];
         const sponsor = accounts[2];
-        const initialAmount = web3.utils.toWei("56.789", "ether");
-        const topupAmount = web3.utils.toWei("12.34", "ether");
+        const initialAmount = new BN(web3.utils.toWei("56.789", "ether"));
+        const topupAmount = new BN(web3.utils.toWei("12.34", "ether"));
 
         // Create a Geon.
         await geonAgg.createGeon(geonId, { from: creator });
@@ -305,9 +314,9 @@ contract("GeonAgg & GeonCoin", accounts => {
         });
 
         // Verify GeonCoin balances.
-        assert(BigNumber("0").isEqualTo(await geonCoin.balanceOf(creator)), "Creator GeonCoin balance");
-        assert(BigNumber(initialAmount).minus(topupAmount).isEqualTo(await geonCoin.balanceOf(sponsor)), "Sponsor GeonCoin balance");
-        assert(BigNumber(topupAmount).isEqualTo(await geonCoin.balanceOf(geonAgg.address)), "GeonAgg GeonCoin balance");
+        assertBNEqual(await geonCoin.balanceOf(creator), "0", "Creator GeonCoin balance");
+        assertBNEqual(await geonCoin.balanceOf(sponsor), initialAmount.sub(topupAmount), "Sponsor GeonCoin balance");
+        assertBNEqual(await geonCoin.balanceOf(geonAgg.address), topupAmount, "GeonAgg GeonCoin balance");
     });
 
     it("[GeonAgg] only Geon creator can delete the Geon and get reward tokens stored in it", async () => {
@@ -315,9 +324,9 @@ contract("GeonAgg & GeonCoin", accounts => {
         const geonWithCoins = "0x02020202020202020202020202020202"; // Geon with >0 GeonCoins.
         const creator = accounts[1];
         const sponsor = accounts[2];
-        const creatorInitialAmount = web3.utils.toWei("123.456", "ether");
-        const sponsorInitialAmount = web3.utils.toWei("789.012", "ether");
-        const topupAmount = web3.utils.toWei("12.3456", "ether");
+        const creatorInitialAmount = new BN(web3.utils.toWei("123.456", "ether"));
+        const sponsorInitialAmount = new BN(web3.utils.toWei("789.012", "ether"));
+        const topupAmount = new BN(web3.utils.toWei("12.3456", "ether"));
 
         // Provision GeonCoins for users.
         await geonCoin.mint(creator, creatorInitialAmount);
@@ -357,9 +366,9 @@ contract("GeonAgg & GeonCoin", accounts => {
         });
 
         // Verify GeonCoin balances.
-        assert(BigNumber(creatorInitialAmount).isEqualTo(await geonCoin.balanceOf(creator)), "Creator GeonCoin balance before");
-        assert(BigNumber(sponsorInitialAmount).minus(topupAmount).isEqualTo(await geonCoin.balanceOf(sponsor)), "Sponsor GeonCoin balance before");
-        assert(BigNumber(topupAmount).isEqualTo(await geonCoin.balanceOf(geonAgg.address)), "GeonAgg GeonCoin balance before");
+        assertBNEqual(await geonCoin.balanceOf(creator), creatorInitialAmount, "Creator GeonCoin balance before");
+        assertBNEqual(await geonCoin.balanceOf(sponsor), sponsorInitialAmount.sub(topupAmount), "Sponsor GeonCoin balance before");
+        assertBNEqual(await geonCoin.balanceOf(geonAgg.address), topupAmount, "GeonAgg GeonCoin balance before");
 
         // Verify that a sender who didn't create the Geon cannot delete it.
         await assertReverts(geonAgg.deleteGeon(geonWithoutCoins, { from: sponsor }), "Can only be called by the Geon creator.");
@@ -391,9 +400,9 @@ contract("GeonAgg & GeonCoin", accounts => {
         verifyGeonDoesNotExist(geonWithCoins);
         
         // Verify GeonCoin balances.
-        assert(BigNumber(creatorInitialAmount).plus(topupAmount).isEqualTo(await geonCoin.balanceOf(creator)), "Creator GeonCoin balance after");
-        assert(BigNumber(sponsorInitialAmount).minus(topupAmount).isEqualTo(await geonCoin.balanceOf(sponsor)), "Sponsor GeonCoin balance after");
-        assert(BigNumber("0").isEqualTo(await geonCoin.balanceOf(geonAgg.address)), "GeonAgg GeonCoin balance after");
+        assertBNEqual(await geonCoin.balanceOf(creator), creatorInitialAmount.add(topupAmount), "Creator GeonCoin balance after");
+        assertBNEqual(await geonCoin.balanceOf(sponsor), sponsorInitialAmount.sub(topupAmount), "Sponsor GeonCoin balance after");
+        assertBNEqual(await geonCoin.balanceOf(geonAgg.address), "0", "GeonAgg GeonCoin balance after");
     });
 
     it("[GeonAgg] cannot delete a non-existent Geon", async () => {
@@ -401,8 +410,8 @@ contract("GeonAgg & GeonCoin", accounts => {
         const geonId1 = "0x00ffeeddccbbaa998877665544332211";
         const geonIdNonExistent = "0x01010101010101010101010101010101";
         const creator = accounts[0];
-        const creatorInitialAmount = web3.utils.toWei("123.456", "ether");
-        const topupAmount = web3.utils.toWei("12.3456", "ether");
+        const creatorInitialAmount = new BN(web3.utils.toWei("123.456", "ether"));
+        const topupAmount = new BN(web3.utils.toWei("12.3456", "ether"));
 
         // Create dummy Geons to bump up the Geon count.
         await geonAgg.createGeon(geonId0, { from: creator });
@@ -417,9 +426,9 @@ contract("GeonAgg & GeonCoin", accounts => {
         const initialGeonCoinBalance = await geonCoin.balanceOf(geonAgg.address);
 
         // Verify the initial Geon count and balance.
-        assert(BigNumber("2").isEqualTo(initialGeonCount), "Geon count should be 2 after 2 Geons are added")
-        assert(BigNumber(topupAmount).isEqualTo(initialGeonCoinBalance), "GeonAgg GeonCoin balance before");
-        assert(BigNumber(creatorInitialAmount).minus(topupAmount).isEqualTo(await geonCoin.balanceOf(creator)), "Creator GeonCoin balance before");
+        assertBNEqual(initialGeonCount, "2", "Geon count should be 2 after 2 Geons are added")
+        assertBNEqual(initialGeonCoinBalance, topupAmount, "GeonAgg GeonCoin balance before");
+        assertBNEqual(await geonCoin.balanceOf(creator), creatorInitialAmount.sub(topupAmount), "Creator GeonCoin balance before");
 
         // Ensure the Geon doesn't exist.
         verifyGeonDoesNotExist(geonIdNonExistent);
@@ -428,9 +437,9 @@ contract("GeonAgg & GeonCoin", accounts => {
         await assertReverts(geonAgg.deleteGeon(geonIdNonExistent, { from: creator }), "Geon with this ID does not exist.");
 
         // Verify the count and balance hasn't changed.
-        assert(BigNumber(initialGeonCount).isEqualTo(await geonAgg.geonCount()), "Deleting non-existent Geon modified Geon count")
-        assert(BigNumber(initialGeonCoinBalance).isEqualTo(await geonCoin.balanceOf(geonAgg.address)), "GeonAgg GeonCoin balance after");
-        assert(BigNumber(creatorInitialAmount).minus(topupAmount).isEqualTo(await geonCoin.balanceOf(creator)), "Creator GeonCoin balance after");
+        assertBNEqual(await geonAgg.geonCount(), initialGeonCount, "Deleting non-existent Geon modified Geon count")
+        assertBNEqual(await geonCoin.balanceOf(geonAgg.address), initialGeonCoinBalance, "GeonAgg GeonCoin balance after");
+        assertBNEqual(await geonCoin.balanceOf(creator), creatorInitialAmount.sub(topupAmount), "Creator GeonCoin balance after");
     });
 
     it("[GeonCoin] cannot top up a non-existent Geon", async () => {
@@ -449,8 +458,8 @@ contract("GeonAgg & GeonCoin", accounts => {
         await assertReverts(geonCoin.transferToGeon(geonId, topupAmount, { from: sponsor }), "Geon with this ID does not exist.");
 
         // Verify GeonCoin balances.
-        assert(BigNumber(sponsorInitialAmount).isEqualTo(await geonCoin.balanceOf(sponsor)), "Sponsor GeonCoin balance after");
-        assert(BigNumber("0").isEqualTo(await geonCoin.balanceOf(geonAgg.address)), "GeonAgg GeonCoin balance after");
+        assertBNEqual(await geonCoin.balanceOf(sponsor), sponsorInitialAmount, "Sponsor GeonCoin balance after");
+        assertBNEqual(await geonCoin.balanceOf(geonAgg.address), "0", "GeonAgg GeonCoin balance after");
     });
 
     it("[GeonAgg] only GeonAgg owner can set geomining reward", async () => {
@@ -484,7 +493,7 @@ contract("GeonAgg & GeonCoin", accounts => {
             actualGeon: geon
         });
         let actualReward = await geonAgg.getGeominingReward(geonId, geominer, reqId, { from: geominer });
-        assert(BigNumber(initialReward).isEqualTo(BigNumber(actualReward)), "Geomining reward before: expected " + initialReward + " actual " + actualReward);
+        assertBNEqual(actualReward, initialReward, "Geomining reward before: actual " + actualReward + " expected " + initialReward);
 
         // Verify that the GeonAgg owner can set geomining reward.
         await geonAgg.setGeominingReward(geonId, geominer, reqId, newReward, { from: geonAggOwner });
@@ -498,7 +507,7 @@ contract("GeonAgg & GeonCoin", accounts => {
             actualGeon: geon
         });
         actualReward = await geonAgg.getGeominingReward(geonId, geominer, reqId, { from: geominer });
-        assert(BigNumber(newReward).isEqualTo(BigNumber(actualReward)), "Geomining reward after: expected " + newReward + " actual " + actualReward);
+        assertBNEqual(actualReward, newReward, "Geomining reward after: actual " + actualReward + " expected " + newReward);
     });
 
     it("[GeonAgg] cannot set geomining reward on a non-existent Geon", async () => {
@@ -525,10 +534,10 @@ contract("GeonAgg & GeonCoin", accounts => {
         const geominer = accounts[2];
         const creatorReqId = "0x02020202020202020202020202020202";
         const geominerReqId = "0x03030303030303030303030303030303";
-        let initalCreatorBalance = web3.utils.toWei("123.456", "ether");
-        let topupAmount = web3.utils.toWei("45.6789", "ether");
-        let creatorReward = web3.utils.toWei("12.3456", "ether");
-        let geominerReward = web3.utils.toWei("23.4567", "ether");
+        let initalCreatorBalance = new BN(web3.utils.toWei("123.456", "ether"));
+        let topupAmount = new BN(web3.utils.toWei("45.6789", "ether"));
+        let creatorReward = new BN(web3.utils.toWei("12.3456", "ether"));
+        let geominerReward = new BN(web3.utils.toWei("23.4567", "ether"));
 
         // Provision GeonCoins for creator.
         await geonCoin.mint(creator, initalCreatorBalance);
@@ -548,17 +557,17 @@ contract("GeonAgg & GeonCoin", accounts => {
         await geonAgg.geomine(geonId, geominerReqId, { from: geominer });
 
         // Verify balances.
-        let expected = BigNumber(initalCreatorBalance).minus(topupAmount).plus(creatorReward);
-        let actual =  BigNumber(await geonCoin.balanceOf(creator));
-        assert(expected.isEqualTo(actual), "Creator GeonCoin balance after: expected " + web3.utils.fromWei(expected.toFixed()) + " actual " + web3.utils.fromWei(actual.toFixed()));
+        let actual =  new BN(await geonCoin.balanceOf(creator));
+        let expected = initalCreatorBalance.sub(topupAmount).add(creatorReward);
+        assertBNEqual(actual, expected, `Creator GeonCoin balance after: actual ${web3.utils.fromWei(actual)} expected ${web3.utils.fromWei(expected)}`);
 
-        expected = BigNumber(geominerReward);
-        actual = BigNumber(await geonCoin.balanceOf(geominer));
-        assert(expected.isEqualTo(actual), "Geominer GeonCoin balance after: expected " + web3.utils.fromWei(expected.toFixed()) + " actual " + web3.utils.fromWei(actual.toFixed()));
+        actual = new BN(await geonCoin.balanceOf(geominer));
+        expected = geominerReward;
+        assert(actual, expected, `Geominer GeonCoin balance after: actual ${web3.utils.fromWei(actual)} expected ${web3.utils.fromWei(expected)}`);
         
-        expected = BigNumber(topupAmount).minus(creatorReward).minus(geominerReward);
-        actual = BigNumber(await geonCoin.balanceOf(geonAgg.address));
-        assert(expected.isEqualTo(actual), "GeonAgg GeonCoin balance after: expected " + web3.utils.fromWei(expected.toFixed()) + " actual " + web3.utils.fromWei(actual.toFixed()));
+        actual = new BN(await geonCoin.balanceOf(geonAgg.address));
+        expected = topupAmount.sub(creatorReward).sub(geominerReward);
+        assert(actual, expected, `GeonAgg GeonCoin balance after: actual ${web3.utils.fromWei(actual)} expected ${web3.utils.fromWei(expected)}`);
     });
 
     it("[GeonAgg] geomining more than the Geon balance fails", async () => {
@@ -567,9 +576,9 @@ contract("GeonAgg & GeonCoin", accounts => {
         const creator = accounts[1];
         const geominer = accounts[2];
         const geominerReqId = "0x03030303030303030303030303030303";
-        let initalCreatorBalance = web3.utils.toWei("123.456", "ether");
-        let topupAmount = web3.utils.toWei("45.6789", "ether");
-        let geominerReward = web3.utils.toWei("1123.4567", "ether");
+        let initalCreatorBalance = new BN(web3.utils.toWei("123.456", "ether"));
+        let topupAmount = new BN(web3.utils.toWei("45.6789", "ether"));
+        let geominerReward = new BN(web3.utils.toWei("1123.4567", "ether"));
 
         // Provision GeonCoins for creator.
         await geonCoin.mint(creator, initalCreatorBalance);
@@ -587,17 +596,17 @@ contract("GeonAgg & GeonCoin", accounts => {
         await assertReverts(geonAgg.geomine(geonId, geominerReqId, { from: geominer }));
 
         // Verify balances.
-        let expected = BigNumber(initalCreatorBalance).minus(topupAmount);
-        let actual =  BigNumber(await geonCoin.balanceOf(creator));
-        assert(expected.isEqualTo(actual), "Creator GeonCoin balance after: expected " + web3.utils.fromWei(expected.toFixed()) + " actual " + web3.utils.fromWei(actual.toFixed()));
+        let actual =  new BN(await geonCoin.balanceOf(creator));
+        let expected = initalCreatorBalance.sub(topupAmount);
+        assertBNEqual(actual, expected, `Creator GeonCoin balance after: actual ${web3.utils.fromWei(actual)} expected ${web3.utils.fromWei(expected)}`);
 
-        expected = BigNumber("0");
-        actual = BigNumber(await geonCoin.balanceOf(geominer));
-        assert(expected.isEqualTo(actual), "Geominer GeonCoin balance after: expected " + web3.utils.fromWei(expected.toFixed()) + " actual " + web3.utils.fromWei(actual.toFixed()));
+        actual = new BN(await geonCoin.balanceOf(geominer));
+        expected = new BN("0");
+        assertBNEqual(actual, expected, `Geominer GeonCoin balance after: actual ${web3.utils.fromWei(actual)} expected ${web3.utils.fromWei(expected)}`);
         
-        expected = BigNumber(topupAmount);
-        actual = BigNumber(await geonCoin.balanceOf(geonAgg.address));
-        assert(expected.isEqualTo(actual), "GeonAgg GeonCoin balance after: expected " + web3.utils.fromWei(expected.toFixed()) + " actual " + web3.utils.fromWei(actual.toFixed()));
+        actual = new BN(await geonCoin.balanceOf(geonAgg.address));
+        expected = topupAmount;
+        assertBNEqual(actual, expected, `GeonAgg GeonCoin balance after: actual ${web3.utils.fromWei(actual)} expected ${web3.utils.fromWei(expected)}`);
     });
 
     it("[GeonAgg] batch Geon create", async () => {
@@ -617,12 +626,13 @@ contract("GeonAgg & GeonCoin", accounts => {
             geonIds.push(byteArrayToHexString(bytes16));
         }
 
-        assert(BigNumber("0").isEqualTo(await geonAgg.geonCount()), "Geon count should be 0 initially.")
+        let actualGeonCount = await geonAgg.geonCount();
+        assertBNEqual(actualGeonCount, "0", `Geon count is ${actualGeonCount}, but should be 0 initially.`);
 
         await geonAgg.createGeons(geonIds, { from: creator });
 
-        const actualGeonCount = await geonAgg.geonCount();
-        assert(BigNumber(expectedGeonCount).isEqualTo(actualGeonCount), `Geon count is ${actualGeonCount}, but it should be ${expectedGeonCount} after batch create operation.`)
+        actualGeonCount = await geonAgg.geonCount();
+        assertBNEqual(actualGeonCount, expectedGeonCount, `Geon count is ${actualGeonCount}, but should be ${expectedGeonCount} after batch create operation.`);
 
         for (let i = 0; i < geonIds.length; i++) {
             let geon = await geonAgg.getGeon(geonIds[i]);
@@ -639,20 +649,20 @@ contract("GeonAgg & GeonCoin", accounts => {
         let geonIds = [];
         let creator = accounts[1];
         const expectedGeonCount = 98;
-        let runningSum = BigNumber("0");
+        let runningSum = new BN("0");
 
         // Prep token amounts.
         let amounts = [];
         for (let i = 0; i < expectedGeonCount; i++) {
             const amountStr = i + "." + i;
-            const amountBN = web3.utils.toWei(amountStr, "ether");
+            const amountBN = new BN(web3.utils.toWei(amountStr, "ether"));
             amounts[i] = amountBN;
-            runningSum = runningSum.plus(amountBN);
+            runningSum = runningSum.add(amountBN);
         }
 
         // Mint tokens to the creator.
         const expectedTotalAmount = runningSum;
-        await geonCoin.mint(creator, expectedTotalAmount.toFixed());
+        await geonCoin.mint(creator, expectedTotalAmount);
 
         // Prep Geon IDs.
         for (let i = 0; i < expectedGeonCount; i++) {
@@ -668,11 +678,12 @@ contract("GeonAgg & GeonCoin", accounts => {
         }
 
         // Initial state checks.
-        assert(BigNumber("0").isEqualTo(await geonAgg.geonCount()), "Geon count should be 0 initially.")
-        assert(BigNumber("0").isEqualTo(await geonCoin.balanceOf(geonAgg.address)), "GeonAgg balance should be 0 initially.")
+        assertBNEqual(await geonAgg.geonCount(), "0", "Geon count should be 0 initially.")
+        assertBNEqual(await geonCoin.balanceOf(geonAgg.address), "0", "GeonAgg balance should be 0 initially.")
+        
         let expected = expectedTotalAmount;
-        let actual = BigNumber(await geonCoin.balanceOf(creator));
-        assert(expected.isEqualTo(actual), "Creator balance before: expected " + web3.utils.fromWei(expected.toFixed()) + " actual " + web3.utils.fromWei(actual.toFixed()));
+        let actual = new BN(await geonCoin.balanceOf(creator));
+        assertBNEqual(actual, expected, `Creator balance before: actual ${web3.utils.fromWei(actual)} expected ${web3.utils.fromWei(expected)}`);
 
         // Create Geons.
         await geonAgg.createGeons(geonIds, { from: creator });
@@ -692,14 +703,16 @@ contract("GeonAgg & GeonCoin", accounts => {
         }
 
         // End state checks.
-        expected = BigNumber(expectedGeonCount);
         actual = await geonAgg.geonCount();
-        assert(expected.isEqualTo(actual), `Geon count is ${actual}, but it should be ${expectedGeonCount} after batch create operation.`)
-        expected = BigNumber("0");
-        actual = BigNumber(await geonCoin.balanceOf(creator));
-        assert(expected.isEqualTo(actual), "Creator balance after: expected " + web3.utils.fromWei(expected.toFixed()) + " actual " + web3.utils.fromWei(actual.toFixed()));
+        expected = new BN(expectedGeonCount);
+        assertBNEqual(actual, expected, `Geon count is ${actual}, but should be ${expectedGeonCount} after batch create operation.`)
+        
+        actual = new BN(await geonCoin.balanceOf(creator));
+        expected = new BN("0");
+        assertBNEqual(actual, expected, `Creator balance after: actual ${web3.utils.fromWei(actual)} expected ${web3.utils.fromWei(expected)}`);
+        
+        actual = new BN(await geonCoin.balanceOf(geonAgg.address));
         expected = expectedTotalAmount;
-        actual = BigNumber(await geonCoin.balanceOf(geonAgg.address));
-        assert(expected.isEqualTo(actual), "GeonAgg balance after: expected " + web3.utils.fromWei(expected.toFixed()) + " actual " + web3.utils.fromWei(actual.toFixed()));
+        assertBNEqual(actual, expected, `GeonAgg balance after: actual ${web3.utils.fromWei(actual)} expected ${web3.utils.fromWei(expected)}`);
     });
 });
