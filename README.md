@@ -13,3 +13,8 @@ Geon Network implementation for an Ethereum blockchain.
     - `truffle compile`
 
 NOTE: You may need to manually udpate solc version in Truffle to something higher than or equal to 0.5.2 to complie. This is temporary.
+
+#### How to test:
+1. Execute the steps under 'How to compile'.
+2. In the repo root directory:
+    `truffle test`
