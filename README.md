@@ -4,7 +4,7 @@ Geon Network implementation for an Ethereum blockchain.
 # Getting Started
 #### Pre-requisites:
 1. Install [NodeJS](https://nodejs.org) and [npm](https://www.npmjs.com) (will be installed automaticaly along with NodeJS).
-2. [Truffle](https://truffleframework.com).
+2. Install [Truffle](https://truffleframework.com).
 
 #### How to compile:
 1. Clone the repo.
@@ -16,5 +16,4 @@ NOTE: You may need to manually udpate solc version in Truffle to something highe
 
 #### How to test:
 1. Execute the steps under 'How to compile'.
-2. In the repo root directory:
-    `truffle test`
+2. In the repo root directory: `truffle test`
